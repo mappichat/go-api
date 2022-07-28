@@ -1,0 +1,27 @@
+version: '3'
+
+services:
+  some-scylla:
+    image: scylladb/scylla
+    container_name: some-scylla
+    ports:
+      - 9042:9042
+    volumes:
+      - scylla-volume:/var/lib/scylla
+
+  # some-scylla2:
+  #   image: scylladb/scylla
+  #   container_name: some-scylla2
+  #   command: --seeds=some-scylla
+  #   # volumes:
+  #   #   - scylla-volume:/var/lib/scylla
+
+  # some-scylla3:
+  #   image: scylladb/scylla
+  #   container_name: some-scylla3
+  #   command: --seeds=some-scylla
+  #   # volumes:
+  #   #   - scylla-volume:/var/lib/scylla
+
+volumes:
+  scylla-volume:
