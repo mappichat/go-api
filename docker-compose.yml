@@ -1,27 +1,48 @@
+# creating scylla cluster
 version: '3'
 
 services:
-  some-scylla:
+  scylla-node1:
     image: scylladb/scylla
-    container_name: some-scylla
+    restart: always
+    container_name: scylla-node1
+    command: --seeds=scylla-node1,scylla-node2 --smp 1 --memory 750M --overprovisioned 1 --api-address 0.0.0.0
+    volumes:
+      - "./database/scylla.yaml:/etc/scylla/scylla.yaml"
+      - "./database/cassandra-rackdc.properties:/etc/scylla/cassandra-rackdc.properties"
+      - "./database/migration.sql:/migration.sql"
+      - "./database/migration2.sql:/migration2.sql"
     ports:
       - 9042:9042
+    networks:
+      web:
+
+  scylla-node2:
+    image: scylladb/scylla
+    restart: always
+    container_name: scylla-node2
+    command: --seeds=scylla-node1,scylla-node2 --smp 1 --memory 750M --overprovisioned 1 --api-address 0.0.0.0
     volumes:
-      - scylla-volume:/var/lib/scylla
+      - "./database/scylla.yaml:/etc/scylla/scylla.yaml"
+      - "./database/cassandra-rackdc.properties:/etc/scylla/cassandra-rackdc.properties"
+    ports:
+      - 9043:9042
+    networks:
+      web:
 
-  # some-scylla2:
-  #   image: scylladb/scylla
-  #   container_name: some-scylla2
-  #   command: --seeds=some-scylla
-  #   # volumes:
-  #   #   - scylla-volume:/var/lib/scylla
+  scylla-node3:
+    image: scylladb/scylla
+    restart: always
+    container_name: scylla-node3
+    command: --seeds=scylla-node1,scylla-node2 --smp 1 --memory 750M --overprovisioned 1 --api-address 0.0.0.0
+    volumes:
+      - "./database/scylla.yaml:/etc/scylla/scylla.yaml"
+      - "./database/cassandra-rackdc.properties:/etc/scylla/cassandra-rackdc.properties"
+    ports:
+      - 9044:9042
+    networks:
+      web:
 
-  # some-scylla3:
-  #   image: scylladb/scylla
-  #   container_name: some-scylla3
-  #   command: --seeds=some-scylla
-  #   # volumes:
-  #   #   - scylla-volume:/var/lib/scylla
-
-volumes:
-  scylla-volume:
+networks:
+  web:
+    driver: bridge

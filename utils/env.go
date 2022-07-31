@@ -2,15 +2,15 @@ package utils
 
 import "os"
 
-type Env struct {
+type EnvironmentVariables struct {
 	PORT string
 }
 
-var env *Env
+var Env *EnvironmentVariables = &EnvironmentVariables{}
 
-func configureEnv() {
-	env.PORT = os.Getenv("PORT")
-	if env.PORT == "" {
-		env.PORT = "8080"
+func ConfigureEnv() {
+	Env.PORT = os.Getenv("PORT")
+	if Env.PORT == "" {
+		Env.PORT = "8080"
 	}
 }
