@@ -20,3 +20,7 @@ populate-db:
 
 kill-db:
 	docker-compose -f ${DB_COMPOSE} down
+
+kill-all:
+	docker-compose down
+	docker-compose -f ${DB_COMPOSE} down
