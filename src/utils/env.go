@@ -14,6 +14,6 @@ func ConfigureEnv() {
 		Env.PORT = "8080"
 	}
 	if Env.DB_HOST = os.Getenv("DB_HOST"); Env.DB_HOST == "" {
-		Env.DB_HOST = ""
+		Env.DB_HOST = "localhost:9042,localhost:9043,localhost:9044"
 	}
 }
