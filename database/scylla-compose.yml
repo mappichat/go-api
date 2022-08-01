@@ -1,0 +1,36 @@
+# creating scylla cluster
+version: '3'
+
+services:
+  scylla-node1:
+    image: scylladb/scylla
+    restart: always
+    container_name: scylla-node1
+    ports:
+      - 9042:9042
+    networks:
+      database:
+
+  scylla-node2:
+    image: scylladb/scylla
+    restart: always
+    container_name: scylla-node2
+    command: --seeds=scylla-node1
+    ports:
+      - 9043:9042
+    networks:
+      database:
+
+  scylla-node3:
+    image: scylladb/scylla
+    restart: always
+    container_name: scylla-node3
+    command: --seeds=scylla-node1
+    ports:
+      - 9044:9042
+    networks:
+      database:
+
+networks:
+  database:
+    driver: bridge

@@ -84,11 +84,6 @@ func initializeScylla(hosts []string) error {
 		return err
 	}
 
-	err = session.ExecStmt(`CREATE KEYSPACE IF NOT EXISTS user_data WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1}`)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 

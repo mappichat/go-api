@@ -9,8 +9,8 @@ services:
       - PORT=8080
       - DB_HOST=scylla-node1,scylla-node2,scylla-node3
     networks:
-      database_scylla:
+      database_database:
 
 networks:
-  database_scylla:
+  database_database:
     external: true
