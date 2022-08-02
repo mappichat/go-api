@@ -16,10 +16,18 @@ CREATE TABLE IF NOT EXISTS user_data.posts (
 );
 
 CREATE TABLE IF NOT EXISTS user_data.replies (
-	id uuid,
 	post_id uuid,
+	id uuid,
 	body text,
 	user_handle text,
 	timestamp timestamp,
-	PRIMARY KEY (id, post_id),
+	PRIMARY KEY (post_id, id),
+);
+
+CREATE TABLE IF NOT EXISTS user_data.votes (
+	post_id uuid,
+	user_handle text,
+	up boolean,
+	timestamp timestamp,
+	PRIMARY KEY (post_id, user_handle),
 );
