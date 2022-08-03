@@ -3,16 +3,17 @@ package database
 import (
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/gocql/gocql"
-	"github.com/scylladb/gocqlx/table"
 	"github.com/scylladb/gocqlx/v2"
-	"github.com/scylladb/gocqlx/v2/qb"
+	"github.com/uber/h3-go/v3"
 )
 
 var cluster *gocql.ClusterConfig
 var session gocqlx.Session
+var partitionResolution int = 1
 
 func initializeScylla(hosts []string) error {
 	var err error
@@ -31,10 +32,13 @@ func initializeScylla(hosts []string) error {
 
 type PostScylla struct {
 	ID         gocql.UUID
+	PartKey    string
+	Tile       string
 	Title      string
 	Body       string
+	AccountId  string
 	UserHandle string
-	Timestamp  int64
+	TimeStamp  int64
 	Latitude   float32
 	Longitude  float32
 	Level      int8
@@ -46,10 +50,12 @@ type PostScylla struct {
 func (p PostScylla) toPost() Post {
 	return Post{
 		ID:         p.ID.String(),
+		Tile:       p.Tile,
 		Title:      p.Title,
 		Body:       p.Body,
+		AccountId:  p.AccountId,
 		UserHandle: p.UserHandle,
-		Timestamp:  time.UnixMilli(p.Timestamp),
+		TimeStamp:  time.UnixMilli(p.TimeStamp),
 		Latitude:   p.Latitude,
 		Longitude:  p.Longitude,
 		Level:      p.Level,
@@ -65,12 +71,17 @@ func convertPost(post *Post) (*PostScylla, error) {
 		return nil, err
 	}
 
+	partKey := h3.ToString(h3.ToParent(h3.FromString(post.Tile), partitionResolution))
+
 	return &PostScylla{
 		ID:         id,
+		PartKey:    partKey,
+		Tile:       post.Tile,
 		Title:      post.Title,
 		Body:       post.Body,
+		AccountId:  post.AccountId,
 		UserHandle: post.UserHandle,
-		Timestamp:  post.Timestamp.UnixMilli(),
+		TimeStamp:  post.TimeStamp.UnixMilli(),
 		Latitude:   post.Latitude,
 		Longitude:  post.Longitude,
 		Level:      post.Level,
@@ -80,117 +91,13 @@ func convertPost(post *Post) (*PostScylla, error) {
 	}, nil
 }
 
-var postTable = table.New(table.Metadata{
-	Name: "user_data.posts",
-	Columns: []string{
-		"id", "title", "body", "user_handle",
-		"timestamp", "latitude", "longitude",
-		"level", "reply_count",
-		"up_votes", "down_votes",
-	},
-	PartKey: []string{"id"},
-	// SortKey: []string{"timestamp", "latitude", "longitude"},
-})
-
-func readPostScylla(id string) (*Post, error) {
-	scyllaID, err := gocql.ParseUUID(id)
-	if err != nil {
-		return nil, err
-	}
-
-	scyllaPost := PostScylla{
-		ID: scyllaID,
-	}
-	q := session.Query(postTable.Get()).BindStruct(scyllaPost)
-	if err := q.GetRelease(&scyllaPost); err != nil {
-		return nil, err
-	}
-
-	post := scyllaPost.toPost()
-	return &post, nil
-}
-
-func readPostsScylla() ([]Post, error) {
-	scyllaPosts := []PostScylla{}
-	// stmt, names := postTable.Select()
-	q := session.Query(`SELECT * FROM user_data.posts`, []string{})
-	if err := q.SelectRelease(&scyllaPosts); err != nil {
-		return nil, err
-	}
-
-	posts := []Post{}
-	for _, scyllaPost := range scyllaPosts {
-		posts = append(posts, scyllaPost.toPost())
-	}
-
-	return posts, nil
-}
-
-func insertPostScylla(post *Post) error {
-	scyllaPost, err := convertPost(post)
-	if err != nil {
-		return err
-	}
-
-	q := session.Query(postTable.Insert()).BindStruct(scyllaPost)
-	if err = q.ExecRelease(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func updatePostScylla(id string, updateMap map[string]interface{}) error {
-	scyllaID, err := gocql.ParseUUID(id)
-	if err != nil {
-		return err
-	}
-
-	keys := []string{}
-	bindMap := qb.M{"id": scyllaID}
-
-	setStatement := ""
-	for key, val := range updateMap {
-		if key != "id" {
-			setStatement += fmt.Sprintf("%s=?,", key)
-			keys = append(keys, key)
-			bindMap[key] = val
-		}
-	}
-	keys = append(keys, "id")
-	setStatement = setStatement[:len(setStatement)-1]
-
-	q := session.Query("UPDATE user_data.posts SET "+setStatement+" WHERE id=?", keys).BindMap(bindMap)
-	if err := q.ExecRelease(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func deletePostScylla(id string) error {
-	scyllaID, err := gocql.ParseUUID(id)
-	if err != nil {
-		return err
-	}
-
-	log.Print(postTable.Delete())
-
-	q := session.Query(postTable.Delete()).BindStruct(PostScylla{ID: scyllaID})
-	if err := q.ExecRelease(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// Replies
-
 type ReplyScylla struct {
 	PostID     gocql.UUID
 	ID         gocql.UUID
 	Body       string
+	AccountId  string
 	UserHandle string
-	Timestamp  int64
+	TimeStamp  int64
 }
 
 func (r ReplyScylla) toReply() Reply {
@@ -198,8 +105,9 @@ func (r ReplyScylla) toReply() Reply {
 		PostID:     r.PostID.String(),
 		ID:         r.ID.String(),
 		Body:       r.Body,
+		AccountId:  r.AccountId,
 		UserHandle: r.UserHandle,
-		Timestamp:  time.UnixMilli(r.Timestamp),
+		TimeStamp:  time.UnixMilli(r.TimeStamp),
 	}
 }
 
@@ -218,106 +126,106 @@ func convertReply(reply *Reply) (*ReplyScylla, error) {
 		PostID:     postId,
 		ID:         id,
 		Body:       reply.Body,
+		AccountId:  reply.AccountId,
 		UserHandle: reply.UserHandle,
-		Timestamp:  reply.Timestamp.UnixMilli(),
+		TimeStamp:  reply.TimeStamp.UnixMilli(),
 	}, nil
 }
 
-var replyTable = table.New(table.Metadata{
-	Name: "user_data.replies",
-	Columns: []string{
-		"post_id", "id", "body", "user_handle", "timestamp",
-	},
-	PartKey: []string{"post_id"},
-	SortKey: []string{"id"},
-})
-
-func readReplyScylla(postID string, id string) (*Reply, error) {
-	scyllaPostID, err := gocql.ParseUUID(postID)
-	if err != nil {
-		return nil, err
-	}
-
-	scyllaID, err := gocql.ParseUUID(id)
-	if err != nil {
-		return nil, err
-	}
-
-	scyllaReply := ReplyScylla{
-		PostID: scyllaPostID,
-		ID:     scyllaID,
-	}
-
-	q := session.Query(replyTable.Get()).BindStruct(scyllaReply)
-	if err := q.GetRelease(&scyllaReply); err != nil {
-		return nil, err
-	}
-
-	reply := scyllaReply.toReply()
-	return &reply, nil
+type VoteScylla struct {
+	PostID    gocql.UUID
+	AccountId string
+	Up        bool
+	Level     int8
+	TimeStamp int64
 }
 
-func readRepliesScylla(postId string) ([]Reply, error) {
-	postID, err := gocql.ParseUUID(postId)
-	if err != nil {
-		return nil, err
+func (v VoteScylla) toVote() Vote {
+	return Vote{
+		PostID:    v.PostID.String(),
+		AccountId: v.AccountId,
+		Up:        v.Up,
+		Level:     v.Level,
+		TimeStamp: time.UnixMilli(v.TimeStamp),
 	}
-
-	scyllaReplies := []ReplyScylla{}
-	q := session.Query(replyTable.Select()).BindMap(qb.M{"post_id": postID})
-	if err := q.SelectRelease(&scyllaReplies); err != nil {
-		return nil, err
-	}
-
-	replies := []Reply{}
-	for _, scyllaReply := range scyllaReplies {
-		replies = append(replies, scyllaReply.toReply())
-	}
-
-	return replies, nil
 }
 
-func insertReplyScylla(reply *Reply) error {
-	scyllaReply, err := convertReply(reply)
+func convertVote(vote *Vote) (*VoteScylla, error) {
+	postId, err := gocql.ParseUUID(vote.PostID)
 	if err != nil {
+		return nil, err
+	}
+
+	return &VoteScylla{
+		PostID:    postId,
+		AccountId: vote.AccountId,
+		Up:        vote.Up,
+		Level:     vote.Level,
+		TimeStamp: vote.TimeStamp.UnixMilli(),
+	}, nil
+}
+
+// Helpers
+
+var tableNames = struct {
+	Posts   string
+	Replies string
+	Votes   string
+}{
+	Posts:   "user_data.posts",
+	Replies: "user_data.replies",
+	Votes:   "user_data.votes",
+}
+
+const readOneFormat = "GET * FROM %s WHERE %s"
+
+func readOneScylla(table string, ops []string, names []string, bindMap map[string]interface{}, dest interface{}) error {
+	q := session.Query(
+		fmt.Sprintf(readOneFormat, table, strings.Join(ops, " AND ")),
+		names,
+	).BindMap(bindMap)
+
+	if err := q.GetRelease(dest); err != nil {
 		return err
 	}
 
-	q := session.Query(replyTable.Insert()).BindStruct(scyllaReply)
-	if err = q.ExecRelease(); err != nil {
-		return err
-	}
 	return nil
 }
 
-func updateReplyScylla(postID string, id string, updateMap map[string]interface{}) error {
-	scyllaPostID, err := gocql.ParseUUID(postID)
-	if err != nil {
+const readManyFormat = "SELECT * FROM %s WHERE %s"
+
+func readManyScylla(table string, ops []string, names []string, bindMap map[string]interface{}, dest interface{}) error {
+	log.Print(fmt.Sprintf(readManyFormat, table, strings.Join(ops, " AND ")))
+	q := session.Query(
+		fmt.Sprintf(readManyFormat, table, strings.Join(ops, " AND ")),
+		names,
+	).BindMap(bindMap)
+
+	if err := q.SelectRelease(dest); err != nil {
 		return err
 	}
 
-	scyllaID, err := gocql.ParseUUID(id)
-	if err != nil {
-		return err
+	return nil
+}
+
+const insertOneFormat = "INSERT INTO %s (%s) VALUES (%s)"
+
+func insertOneScylla(table string, bindMap map[string]interface{}) error {
+	names := make([]string, len(bindMap))
+	vals := make([]string, len(bindMap))
+	i := 0
+	for k := range bindMap {
+		names[i] = k
+		vals[i] = "?"
+		i++
 	}
 
-	keys := []string{}
-	bindMap := qb.M{"post_id": scyllaPostID, "id": scyllaID}
+	log.Print(fmt.Sprintf(insertOneFormat, table, strings.Join(names, ","), strings.Join(vals, ",")))
+	q := session.Query(
+		fmt.Sprintf(insertOneFormat, table, strings.Join(names, ","), strings.Join(vals, ",")),
+		names,
+	).BindMap(bindMap)
 
-	setStatement := ""
-	for key, val := range updateMap {
-		if key != "id" && key != "post_id" {
-			setStatement += fmt.Sprintf("%s=?,", key)
-			keys = append(keys, key)
-			bindMap[key] = val
-		}
-	}
-	keys = append(keys, "post_id")
-	keys = append(keys, "id")
-	setStatement = setStatement[:len(setStatement)-1]
-
-	q := session.Query("UPDATE user_data.replies SET "+setStatement+" WHERE post_id=? AND id=?", keys).BindMap(bindMap)
-	log.Print(q)
 	if err := q.ExecRelease(); err != nil {
 		return err
 	}
@@ -325,20 +233,31 @@ func updateReplyScylla(postID string, id string, updateMap map[string]interface{
 	return nil
 }
 
-func deleteReplyScylla(postID string, id string) error {
-	scyllaPostID, err := gocql.ParseUUID(postID)
-	if err != nil {
+const updateFormat = "UPDATE %s SET %s WHERE %s"
+
+func updateScylla(table string, setOps []string, ops []string, names []string, bindMap map[string]interface{}) error {
+	log.Print(fmt.Sprintf(updateFormat, table, strings.Join(setOps, ","), strings.Join(ops, " AND ")))
+	q := session.Query(
+		fmt.Sprintf(updateFormat, table, strings.Join(setOps, ","), strings.Join(ops, " AND ")),
+		names,
+	).BindMap(bindMap)
+
+	if err := q.ExecRelease(); err != nil {
 		return err
 	}
 
-	scyllaID, err := gocql.ParseUUID(id)
-	if err != nil {
-		return err
-	}
+	return nil
+}
 
-	log.Print(replyTable.Delete())
+const deleteFormat = "DELETE FROM %s WHERE %s IF EXISTS"
 
-	q := session.Query(replyTable.Delete()).BindStruct(ReplyScylla{PostID: scyllaPostID, ID: scyllaID})
+func deleteScylla(table string, ops []string, names []string, bindMap map[string]interface{}) error {
+	log.Print(fmt.Sprintf(deleteFormat, table, strings.Join(ops, " AND ")))
+	q := session.Query(
+		fmt.Sprintf(deleteFormat, table, strings.Join(ops, " AND ")),
+		names,
+	).BindMap(bindMap)
+
 	if err := q.ExecRelease(); err != nil {
 		return err
 	}

@@ -1,35 +1,47 @@
 package database
 
 import (
+	"fmt"
+	"log"
+	"strings"
 	"time"
+
+	"github.com/gocql/gocql"
+	"github.com/mappichat/go-api.git/src/utils"
+	"github.com/uber/h3-go/v3"
 )
 
 type Post struct {
-	ID         string
-	Title      string
-	Body       string
-	UserHandle string
-	Timestamp  time.Time
-	Latitude   float32
-	Longitude  float32
-	Level      int8
-	ReplyCount int32
-	UpVotes    int32
-	DownVotes  int32
+	ID         string    `json:"id"`
+	Tile       string    `json:"tile"`
+	Title      string    `json:"title"`
+	Body       string    `json:"body"`
+	AccountId  string    `json:"account_id"`
+	UserHandle string    `json:"user_handle"`
+	TimeStamp  time.Time `json:"time_stamp"`
+	Latitude   float32   `json:"latitude"`
+	Longitude  float32   `json:"longitude"`
+	Level      int8      `json:"level"`
+	ReplyCount int32     `json:"reply_count"`
+	UpVotes    int32     `json:"up_votes"`
+	DownVotes  int32     `json:"down_votes"`
 }
 
 type Reply struct {
-	PostID     string
-	ID         string
-	Body       string
-	UserHandle string
-	Timestamp  time.Time
+	PostID     string    `json:"post_id"`
+	ID         string    `json:"id"`
+	Body       string    `json:"body"`
+	AccountId  string    `json:"account_id"`
+	UserHandle string    `json:"user_handle"`
+	TimeStamp  time.Time `json:"time_stamp"`
 }
 
 type Vote struct {
-	PostId     string
-	UserHandle string
-	Up         bool
+	PostID    string    `json:"post_id"`
+	AccountId string    `json:"account_id"`
+	Up        bool      `json:"up"`
+	Level     int8      `json:"level"`
+	TimeStamp time.Time `json:"time_stamp"`
 }
 
 func Initialize(hosts []string) error {
@@ -38,44 +50,186 @@ func Initialize(hosts []string) error {
 
 // Posts
 
-func ReadPost(id string) (*Post, error) {
-	return readPostScylla(id)
+func ReadPost(id string, tile string) (*Post, error) {
+	partKey := h3.ToString(h3.ToParent(h3.FromString(tile), partitionResolution))
+	dest := PostScylla{}
+	if err := readOneScylla(
+		tableNames.Posts,
+		[]string{"part_key=?", "tile=?", "id=?"},
+		[]string{"part_key", "tile", "id"},
+		map[string]interface{}{"part_key": partKey, "tile": tile, "id": id},
+		&dest,
+	); err != nil {
+		return nil, err
+	}
+
+	post := dest.toPost()
+	return &post, nil
 }
 
-func ReadPosts(level int8, latitude float32, longitude float32, latitudeDelta float32, longitudeDelta float32) ([]Post, error) {
-	return readPostsScylla()
+func ReadPosts(level int8, tiles []string) ([]Post, error) {
+	partKeys := map[string]bool{}
+	for _, tile := range tiles {
+		key := h3.ToString(h3.ToParent(h3.FromString(tile), partitionResolution))
+		partKeys[key] = true
+	}
+
+	keyMarks := make([]string, len(partKeys))
+	names := make([]string, len(partKeys)+len(tiles)+1)
+	bindMap := map[string]interface{}{}
+	i := 0
+	for key := range partKeys {
+		keyMarks[i] = "?"
+		names[i] = key
+		bindMap[key] = key
+		i++
+	}
+
+	names[i] = "level"
+	bindMap["level"] = level
+	i++
+
+	tileMarks := make([]string, len(tiles))
+	for j, tile := range tiles {
+		tileMarks[j] = "?"
+		bindMap[tile] = tile
+		names[i] = tile
+		i++
+	}
+
+	log.Print(names)
+	log.Print(bindMap)
+	dest := []PostScylla{}
+	if err := readManyScylla(
+		tableNames.Posts,
+		[]string{fmt.Sprintf("part_key IN (%s)", strings.Join(keyMarks, ",")), "level=?", fmt.Sprintf("tile IN (%s)", strings.Join(tileMarks, "?"))},
+		names,
+		bindMap,
+		&dest,
+	); err != nil {
+		return nil, err
+	}
+
+	posts := make([]Post, len(dest))
+	for j, scyllaPost := range dest {
+		posts[j] = scyllaPost.toPost()
+	}
+
+	return posts, nil
 }
 
 func InsertPost(post *Post) error {
-	return insertPostScylla(post)
+	scyllaPost, err := convertPost(post)
+	if err != nil {
+		return err
+	}
+	bindMap, err := utils.DecodeSnakeCase(*scyllaPost)
+	if err != nil {
+		return err
+	}
+	if err = insertOneScylla(
+		tableNames.Posts,
+		bindMap,
+	); err != nil {
+		return err
+	}
+	return nil
 }
 
-func UpdatePost(id string, updateMap map[string]interface{}) error {
-	return updatePostScylla(id, updateMap)
+func UpdatePost(id string, tile string, accountId string, updateMap map[string]interface{}) error {
+	scyllaID, err := gocql.ParseUUID(id)
+	if err != nil {
+		return err
+	}
+
+	delete(updateMap, "id")
+	delete(updateMap, "part_key")
+	delete(updateMap, "tile")
+
+	names := make([]string, len(updateMap)+3)
+	setOps := make([]string, len(updateMap))
+	i := 0
+	for k := range updateMap {
+		names[i] = k
+		setOps[i] = fmt.Sprintf("%s=?", k)
+		i++
+	}
+
+	updateMap["id"] = scyllaID
+	names[i] = "id"
+	updateMap["part_key"] = h3.ToString(h3.ToParent(h3.FromString(tile), partitionResolution))
+	names[i+1] = "part_key"
+	updateMap["tile"] = tile
+	names[i+2] = "tile"
+
+	if err = updateScylla(
+		tableNames.Posts,
+		setOps,
+		[]string{"part_key=?", "tile=?", "id=?"},
+		names,
+		updateMap,
+	); err != nil {
+		return err
+	}
+	return nil
 }
 
-func DeletePost(id string) error {
-	return deletePostScylla(id)
+func DeletePost(id string, tile string, accountId string) error {
+	scyllaID, err := gocql.ParseUUID(id)
+	if err != nil {
+		return err
+	}
+	if err = deleteScylla(
+		tableNames.Posts,
+		[]string{"id=?", "tile=?", "account_id=?"},
+		[]string{"id", "tile", "account_id"},
+		map[string]interface{}{"id": scyllaID, "tile": tile, "account_id": accountId},
+	); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Replies
 
 func ReadReply(postID string, id string) (*Reply, error) {
-	return readReplyScylla(postID, id)
+	return nil, nil
 }
 
 func ReadReplies(postId string) ([]Reply, error) {
-	return readRepliesScylla(postId)
+	return nil, nil
 }
 
 func InsertReply(reply *Reply) error {
-	return insertReplyScylla(reply)
+	return nil
 }
 
-func UpdateReply(postID string, id string, updateMap map[string]interface{}) error {
-	return updateReplyScylla(postID, id, updateMap)
+func UpdateReply(postID string, id string, accountId string, updateMap map[string]interface{}) error {
+	return nil
 }
 
-func DeleteReply(postID string, id string) error {
-	return deleteReplyScylla(postID, id)
+func DeleteReply(postID string, id string, accountId string) error {
+	return nil
+}
+
+// Votes
+
+func ReadVote(postID string, accountId string, level int8) (*Vote, error) {
+	return nil, nil
+}
+
+func ReadVotes(postId string) ([]Vote, error) {
+	return nil, nil
+}
+
+func InsertVote(vote *Vote) error {
+	return nil
+}
+
+func UpdateVote(postID string, accountId string, level int8, updateMap map[string]interface{}) error {
+	return nil
+}
+
+func DeleteVote(postID string, accountId string, level int8) error {
+	return nil
 }

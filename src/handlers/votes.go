@@ -4,11 +4,10 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/google/uuid"
 	"github.com/mappichat/go-api.git/src/database"
 )
 
-func HandleReplies(router fiber.Router) {
+func HandleVotes(router fiber.Router) {
 	router.Get("/", func(c *fiber.Ctx) error {
 		c.Accepts("json", "text")
 		c.Accepts("application/json")
@@ -21,41 +20,30 @@ func HandleReplies(router fiber.Router) {
 			return err
 		}
 
-		replies, err := database.ReadReplies(payload.PostID)
+		votes, err := database.ReadVotes(payload.PostID)
 		if err != nil {
 			return err
 		}
 
-		return c.JSON(replies)
+		return c.JSON(votes)
 	})
 
 	router.Post("/", func(c *fiber.Ctx) error {
 		c.Accepts("json", "text")
 		c.Accepts("application/json")
 
-		payload := struct {
-			PostID     string `json:"post_id"`
-			UserHandle string `json:"user_handle"`
-			Body       string `json:"body"`
-		}{}
-
+		payload := database.Vote{}
 		if err := c.BodyParser(&payload); err != nil {
 			return err
 		}
 
-		newReply := database.Reply{
-			PostID:     payload.PostID,
-			ID:         uuid.NewString(),
-			UserHandle: payload.UserHandle,
-			Body:       payload.Body,
-			TimeStamp:  time.Now(),
-		}
+		payload.TimeStamp = time.Now()
 
-		if err := database.InsertReply(&newReply); err != nil {
+		if err := database.InsertVote(&payload); err != nil {
 			return err
 		}
 
-		return c.JSON(newReply)
+		return c.JSON(payload)
 	})
 
 	router.Patch("/", func(c *fiber.Ctx) error {
@@ -64,8 +52,8 @@ func HandleReplies(router fiber.Router) {
 
 		payload := struct {
 			PostID     string                 `json:"post_id"`
-			ID         string                 `json:"id"`
-			AccountId  string                 `json:"account_id"`
+			UserHandle string                 `json:"user_handle"`
+			Level      int8                   `json:"level"`
 			UpdateBody map[string]interface{} `json:"update_body"`
 		}{}
 
@@ -73,7 +61,7 @@ func HandleReplies(router fiber.Router) {
 			return err
 		}
 
-		if err := database.UpdateReply(payload.PostID, payload.ID, payload.AccountId, payload.UpdateBody); err != nil {
+		if err := database.UpdateVote(payload.PostID, payload.UserHandle, payload.Level, payload.UpdateBody); err != nil {
 			return err
 		}
 
@@ -85,16 +73,16 @@ func HandleReplies(router fiber.Router) {
 		c.Accepts("application/json")
 
 		payload := struct {
-			PostID    string `json:"post_id"`
-			ID        string `json:"id"`
-			AccountId string `json:"account_id"`
+			PostID     string `json:"post_id"`
+			UserHandle string `json:"user_handle"`
+			Level      int8   `json:"level"`
 		}{}
 
 		if err := c.BodyParser(&payload); err != nil {
 			return err
 		}
 
-		if err := database.DeleteReply(payload.PostID, payload.ID, payload.AccountId); err != nil {
+		if err := database.DeleteVote(payload.PostID, payload.UserHandle, payload.Level); err != nil {
 			return err
 		}
 

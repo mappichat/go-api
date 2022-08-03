@@ -2,32 +2,38 @@
 CREATE KEYSPACE IF NOT EXISTS user_data WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
 
 CREATE TABLE IF NOT EXISTS user_data.posts (
-	id uuid PRIMARY KEY,
+	id uuid,
+	part_key text,
+	tile text,
 	title text,
 	body text,
+	account_id text,
 	user_handle text,
-	timestamp timestamp,
+	time_stamp timestamp,
 	latitude float,
 	longitude float,
 	level int,
 	reply_count int,
 	up_votes int,
 	down_votes int,
+	PRIMARY KEY ((part_key), level, tile, latitude, longitude, time_stamp, id),
 );
 
 CREATE TABLE IF NOT EXISTS user_data.replies (
 	post_id uuid,
 	id uuid,
 	body text,
+	account_id text,
 	user_handle text,
-	timestamp timestamp,
-	PRIMARY KEY (post_id, id),
+	time_stamp timestamp,
+	PRIMARY KEY ((post_id), id),
 );
 
 CREATE TABLE IF NOT EXISTS user_data.votes (
 	post_id uuid,
-	user_handle text,
+	account_id text,
 	up boolean,
-	timestamp timestamp,
-	PRIMARY KEY (post_id, user_handle),
+	level int,
+	time_stamp timestamp,
+	PRIMARY KEY ((post_id), level, account_id),
 );
