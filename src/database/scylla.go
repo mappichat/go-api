@@ -177,11 +177,16 @@ var tableNames = struct {
 	Votes:   "user_data.votes",
 }
 
-const readOneFormat = "GET * FROM %s WHERE %s"
+const readOneFormat = "GET * FROM %s WHERE %s %s"
 
-func readOneScylla(table string, ops []string, names []string, bindMap map[string]interface{}, dest interface{}) error {
+func readOneScylla(table string, ops []string, names []string, bindMap map[string]interface{}, dest interface{}, filtering bool) error {
+	filterString := ""
+	if filtering {
+		filterString = "ALLOW FILTERING"
+	}
+
 	q := session.Query(
-		fmt.Sprintf(readOneFormat, table, strings.Join(ops, " AND ")),
+		fmt.Sprintf(readOneFormat, table, strings.Join(ops, " AND "), filterString),
 		names,
 	).BindMap(bindMap)
 
@@ -192,12 +197,16 @@ func readOneScylla(table string, ops []string, names []string, bindMap map[strin
 	return nil
 }
 
-const readManyFormat = "SELECT * FROM %s WHERE %s"
+const readManyFormat = "SELECT * FROM %s WHERE %s %s"
 
-func readManyScylla(table string, ops []string, names []string, bindMap map[string]interface{}, dest interface{}) error {
-	log.Print(fmt.Sprintf(readManyFormat, table, strings.Join(ops, " AND ")))
+func readManyScylla(table string, ops []string, names []string, bindMap map[string]interface{}, dest interface{}, filtering bool) error {
+	filterString := ""
+	if filtering {
+		filterString = "ALLOW FILTERING"
+	}
+
 	q := session.Query(
-		fmt.Sprintf(readManyFormat, table, strings.Join(ops, " AND ")),
+		fmt.Sprintf(readManyFormat, table, strings.Join(ops, " AND "), filterString),
 		names,
 	).BindMap(bindMap)
 
@@ -208,9 +217,14 @@ func readManyScylla(table string, ops []string, names []string, bindMap map[stri
 	return nil
 }
 
-const insertOneFormat = "INSERT INTO %s (%s) VALUES (%s)"
+const insertOneFormat = "INSERT INTO %s (%s) VALUES (%s) %s"
 
-func insertOneScylla(table string, bindMap map[string]interface{}) error {
+func insertOneScylla(table string, bindMap map[string]interface{}, filtering bool) error {
+	filterString := ""
+	if filtering {
+		filterString = "ALLOW FILTERING"
+	}
+
 	names := make([]string, len(bindMap))
 	vals := make([]string, len(bindMap))
 	i := 0
@@ -219,10 +233,8 @@ func insertOneScylla(table string, bindMap map[string]interface{}) error {
 		vals[i] = "?"
 		i++
 	}
-
-	log.Print(fmt.Sprintf(insertOneFormat, table, strings.Join(names, ","), strings.Join(vals, ",")))
 	q := session.Query(
-		fmt.Sprintf(insertOneFormat, table, strings.Join(names, ","), strings.Join(vals, ",")),
+		fmt.Sprintf(insertOneFormat, table, strings.Join(names, ","), strings.Join(vals, ","), filterString),
 		names,
 	).BindMap(bindMap)
 
@@ -233,12 +245,16 @@ func insertOneScylla(table string, bindMap map[string]interface{}) error {
 	return nil
 }
 
-const updateFormat = "UPDATE %s SET %s WHERE %s"
+const updateFormat = "UPDATE %s SET %s WHERE %s %s"
 
-func updateScylla(table string, setOps []string, ops []string, names []string, bindMap map[string]interface{}) error {
-	log.Print(fmt.Sprintf(updateFormat, table, strings.Join(setOps, ","), strings.Join(ops, " AND ")))
+func updateScylla(table string, setOps []string, ops []string, names []string, bindMap map[string]interface{}, filtering bool) error {
+	filterString := ""
+	if filtering {
+		filterString = "ALLOW FILTERING"
+	}
+
 	q := session.Query(
-		fmt.Sprintf(updateFormat, table, strings.Join(setOps, ","), strings.Join(ops, " AND ")),
+		fmt.Sprintf(updateFormat, table, strings.Join(setOps, ","), strings.Join(ops, " AND "), filterString),
 		names,
 	).BindMap(bindMap)
 
@@ -249,12 +265,19 @@ func updateScylla(table string, setOps []string, ops []string, names []string, b
 	return nil
 }
 
-const deleteFormat = "DELETE FROM %s WHERE %s IF EXISTS"
+const deleteFormat = "DELETE FROM %s WHERE %s IF EXISTS %s"
 
-func deleteScylla(table string, ops []string, names []string, bindMap map[string]interface{}) error {
-	log.Print(fmt.Sprintf(deleteFormat, table, strings.Join(ops, " AND ")))
+func deleteScylla(table string, ops []string, names []string, bindMap map[string]interface{}, filtering bool) error {
+	filterString := ""
+	if filtering {
+		filterString = "ALLOW FILTERING"
+	}
+
+	log.Print(bindMap)
+	log.Print(names)
+	log.Print(fmt.Sprintf(deleteFormat, table, strings.Join(ops, " AND "), filterString))
 	q := session.Query(
-		fmt.Sprintf(deleteFormat, table, strings.Join(ops, " AND ")),
+		fmt.Sprintf(deleteFormat, table, strings.Join(ops, " AND "), filterString),
 		names,
 	).BindMap(bindMap)
 

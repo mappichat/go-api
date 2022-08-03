@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS user_data.posts (
 	reply_count int,
 	up_votes int,
 	down_votes int,
-	PRIMARY KEY ((part_key), level, tile, latitude, longitude, time_stamp, id),
+	PRIMARY KEY ((part_key), level, tile, id, account_id),
 );
 
 CREATE TABLE IF NOT EXISTS user_data.replies (
@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS user_data.replies (
 	account_id text,
 	user_handle text,
 	time_stamp timestamp,
-	PRIMARY KEY ((post_id), id),
+	PRIMARY KEY ((post_id), id, account_id),
 );
 
 CREATE TABLE IF NOT EXISTS user_data.votes (

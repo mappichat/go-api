@@ -2,7 +2,6 @@ package database
 
 import (
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -59,6 +58,7 @@ func ReadPost(id string, tile string) (*Post, error) {
 		[]string{"part_key", "tile", "id"},
 		map[string]interface{}{"part_key": partKey, "tile": tile, "id": id},
 		&dest,
+		false,
 	); err != nil {
 		return nil, err
 	}
@@ -97,8 +97,6 @@ func ReadPosts(level int8, tiles []string) ([]Post, error) {
 		i++
 	}
 
-	log.Print(names)
-	log.Print(bindMap)
 	dest := []PostScylla{}
 	if err := readManyScylla(
 		tableNames.Posts,
@@ -106,6 +104,7 @@ func ReadPosts(level int8, tiles []string) ([]Post, error) {
 		names,
 		bindMap,
 		&dest,
+		false,
 	); err != nil {
 		return nil, err
 	}
@@ -130,23 +129,20 @@ func InsertPost(post *Post) error {
 	if err = insertOneScylla(
 		tableNames.Posts,
 		bindMap,
+		false,
 	); err != nil {
 		return err
 	}
 	return nil
 }
 
-func UpdatePost(id string, tile string, accountId string, updateMap map[string]interface{}) error {
+func UpdatePost(id string, tile string, level int8, accountId string, updateMap map[string]interface{}) error {
 	scyllaID, err := gocql.ParseUUID(id)
 	if err != nil {
 		return err
 	}
 
-	delete(updateMap, "id")
-	delete(updateMap, "part_key")
-	delete(updateMap, "tile")
-
-	names := make([]string, len(updateMap)+3)
+	names := make([]string, len(updateMap)+5)
 	setOps := make([]string, len(updateMap))
 	i := 0
 	for k := range updateMap {
@@ -155,35 +151,42 @@ func UpdatePost(id string, tile string, accountId string, updateMap map[string]i
 		i++
 	}
 
-	updateMap["id"] = scyllaID
-	names[i] = "id"
 	updateMap["part_key"] = h3.ToString(h3.ToParent(h3.FromString(tile), partitionResolution))
-	names[i+1] = "part_key"
+	names[i] = "part_key"
+	updateMap["level"] = level
+	names[i+1] = "level"
 	updateMap["tile"] = tile
 	names[i+2] = "tile"
+	updateMap["id"] = scyllaID
+	names[i+3] = "id"
+	updateMap["account_id"] = accountId
+	names[i+4] = "account_id"
 
 	if err = updateScylla(
 		tableNames.Posts,
 		setOps,
-		[]string{"part_key=?", "tile=?", "id=?"},
+		[]string{"part_key=?", "level=?", "tile=?", "id=?", "account_id=?"},
 		names,
 		updateMap,
+		false,
 	); err != nil {
 		return err
 	}
 	return nil
 }
 
-func DeletePost(id string, tile string, accountId string) error {
+func DeletePost(id string, tile string, level int8, accountId string) error {
 	scyllaID, err := gocql.ParseUUID(id)
 	if err != nil {
 		return err
 	}
+	partKey := h3.ToString(h3.ToParent(h3.FromString(tile), partitionResolution))
 	if err = deleteScylla(
 		tableNames.Posts,
-		[]string{"id=?", "tile=?", "account_id=?"},
-		[]string{"id", "tile", "account_id"},
-		map[string]interface{}{"id": scyllaID, "tile": tile, "account_id": accountId},
+		[]string{"part_key=?", "id=?", "level=?", "tile=?", "account_id=?"},
+		[]string{"part_key", "id", "level", "tile", "account_id"},
+		map[string]interface{}{"part_key": partKey, "id": scyllaID, "level": level, "tile": tile, "account_id": accountId},
+		false,
 	); err != nil {
 		return err
 	}

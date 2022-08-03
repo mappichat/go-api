@@ -1,11 +1,9 @@
 package handlers
 
 import (
-	"errors"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	"github.com/mappichat/go-api.git/src/database"
 )
@@ -47,24 +45,13 @@ func HandlePosts(router fiber.Router) {
 			return err
 		}
 
-		token := c.Locals("user").(*jwt.Token)
-		claims := token.Claims.(jwt.MapClaims)
-		accountID, ok := claims["sub"].(string)
-		if !ok {
-			return errors.New("jwt has no sub value")
-		}
-		userHandle, ok := claims["user_handle"].(string)
-		if !ok {
-			return errors.New("jwt has no user_handle claim")
-		}
-
 		newPost := database.Post{
 			ID:         uuid.NewString(),
 			Tile:       payload.Tile,
 			Title:      payload.Title,
 			Body:       payload.Body,
-			AccountId:  accountID,
-			UserHandle: userHandle,
+			AccountId:  c.Locals("account_id").(string),
+			UserHandle: c.Locals("user_handle").(string),
 			TimeStamp:  time.Now(),
 			Latitude:   payload.Latitude,
 			Longitude:  payload.Longitude,
@@ -86,9 +73,9 @@ func HandlePosts(router fiber.Router) {
 		c.Accepts("application/json")
 
 		payload := struct {
-			ID         string                 `json:"id"`
+			Level      int8                   `json:"level"`
 			Tile       string                 `json:"tile"`
-			AccountId  string                 `json:"account_id"`
+			ID         string                 `json:"id"`
 			UpdateBody map[string]interface{} `json:"update_body"`
 		}{}
 
@@ -105,7 +92,7 @@ func HandlePosts(router fiber.Router) {
 			return err
 		}
 
-		if err := database.UpdatePost(payload.ID, payload.Tile, payload.AccountId, payload.UpdateBody); err != nil {
+		if err := database.UpdatePost(payload.ID, payload.Tile, payload.Level, c.Locals("account_id").(string), payload.UpdateBody); err != nil {
 			return err
 		}
 
@@ -117,16 +104,16 @@ func HandlePosts(router fiber.Router) {
 		c.Accepts("application/json")
 
 		payload := struct {
-			ID        string `json:"id"`
-			Tile      string `json:"tile"`
-			AccountId string `json:"account_id"`
+			ID    string `json:"id"`
+			Tile  string `json:"tile"`
+			Level int8   `json:"level"`
 		}{}
 
 		if err := c.BodyParser(&payload); err != nil {
 			return err
 		}
 
-		if err := database.DeletePost(payload.ID, payload.Tile, payload.AccountId); err != nil {
+		if err := database.DeletePost(payload.ID, payload.Tile, payload.Level, c.Locals("account_id").(string)); err != nil {
 			return err
 		}
 
