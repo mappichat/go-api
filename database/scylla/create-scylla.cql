@@ -25,6 +25,9 @@ CREATE TABLE IF NOT EXISTS user_data.replies (
 	body text,
 	account_id text,
 	user_handle text,
+	tile text,
+	latitude float,
+	longitude float,
 	time_stamp timestamp,
 	PRIMARY KEY ((post_id), id, account_id),
 );
@@ -34,6 +37,9 @@ CREATE TABLE IF NOT EXISTS user_data.votes (
 	account_id text,
 	up boolean,
 	level int,
+	tile text,
+	latitude float,
+	longitude float,
 	time_stamp timestamp,
 	PRIMARY KEY ((post_id), level, account_id),
 );

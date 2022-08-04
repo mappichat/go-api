@@ -7,7 +7,7 @@ services:
     - 8080:8080
     environment:
       - PORT=8080
-      - DB_HOST=scylla-node1,scylla-node2,scylla-node3
+      - DB_CONNECTION_STRING=host=postgres port=5432 user=postgres password=password dbname=postgres sslmode=disable
     networks:
       database_database:
 

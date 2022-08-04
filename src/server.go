@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"log"
-	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	jwtware "github.com/gofiber/jwt/v3"
@@ -15,8 +14,9 @@ import (
 
 func main() {
 	utils.ConfigureEnv()
-
-	if err := database.Initialize(strings.Split(utils.Env.DB_HOST, ",")); err != nil {
+	db, err := database.SqlInitialize(utils.Env.DB_CONNECTION_STRING)
+	defer db.Close()
+	if err != nil {
 		log.Fatal(err.Error())
 	}
 
@@ -26,16 +26,22 @@ func main() {
 		return c.SendString("Healthy")
 	})
 
-	app.Use(jwtware.New(jwtware.Config{
+	webhooks := app.Group("/webhooks")
+
+	handlers.HandleWebhooks(webhooks)
+
+	api := app.Group("/api")
+
+	api.Use(jwtware.New(jwtware.Config{
 		SigningKey: []byte(utils.Env.JWT_SECRET),
 	}))
 
-	app.Use(func(c *fiber.Ctx) error {
+	api.Use(func(c *fiber.Ctx) error {
 		token := c.Locals("user").(*jwt.Token)
 		claims := token.Claims.(jwt.MapClaims)
-		accountID, ok := claims["sub"].(string)
+		accountID, ok := claims["account_id"].(string)
 		if !ok {
-			return errors.New("jwt has no sub value")
+			return errors.New("jwt has no account_id claim")
 		}
 		userHandle, ok := claims["user_handle"].(string)
 		if !ok {
@@ -46,7 +52,6 @@ func main() {
 		return c.Next()
 	})
 
-	api := app.Group("/api")
 	handlers.HandlePosts(api.Group("/posts"))
 	handlers.HandleReplies(api.Group("/replies"))
 	handlers.HandleVotes(api.Group("/votes"))

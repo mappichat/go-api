@@ -3,9 +3,13 @@
 # 
 # Alternatively to make run, make compose will run the server with docker
 
-DB_HOST=scylla-node1
-DB_COMPOSE=$(shell pwd)/database/scylla-compose.yml
-DB_NETWORK=database_database
+SCYLLA_HOST=scylla-node1
+SCYLLA_DIR=$(shell pwd)/database/scylla
+SCYLLA_NETWORK=scylla_database
+
+POSTGRES_HOST=postgres
+POSTGRES_DIR=$(shell pwd)/database/postgres
+POSTGRES_NETWORK=postgres_database
 
 install:
 	go mod download && go mod verify
@@ -19,15 +23,20 @@ compose:
 kill:
 	docker-compose down
 
-compose-db:
-	docker-compose -f ${DB_COMPOSE} up
+compose-scylla:
+	docker-compose -f ${SCYLLA_DIR}/docker-compose.yml up
 
-populate-db:
-	docker run -it --network ${DB_NETWORK} --env CQLSH_HOST=${DB_HOST} -v "$(shell pwd)/database:/host-data/" --rm cassandra cqlsh -f /host-data/create-scylla.cql
+populate-scylla:
+	docker run -it --network ${SCYLLA_NETWORK} --env CQLSH_HOST=${SCYLLA_HOST} -v "${SCYLLA_DIR}:/host-data/" --rm cassandra cqlsh -f /host-data/create-scylla.cql
 
-kill-db:
-	docker-compose -f ${DB_COMPOSE} down
+kill-scylla:
+	docker-compose -f ${SCYLLA_DIR}/docker-compose.yml down
 
-kill-all:
-	docker-compose down
-	docker-compose -f ${DB_COMPOSE} down
+compose-postgres:
+	docker-compose -f ${POSTGRES_DIR}/docker-compose.yml up
+
+populate-postgres:
+	docker run -it --network ${POSTGRES_NETWORK} --env PGPASSWORD=password -v "${POSTGRES_DIR}:/host-data/" postgres psql -h ${POSTGRES_HOST} -U postgres -f /host-data/create-db.sql
+
+kill-postgres:
+	docker-compose -f ${POSTGRES_DIR}/docker-compose.yml down
