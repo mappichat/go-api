@@ -14,8 +14,9 @@ import (
 
 func main() {
 	utils.ConfigureEnv()
-	db, err := database.SqlInitialize(utils.Env.DB_CONNECTION_STRING)
-	defer db.Close()
+	log.Print(utils.Env.DB_CONNECTION_STRING)
+	_, err := database.SqlInitialize(utils.Env.DB_CONNECTION_STRING)
+	// defer db.Close()
 	if err != nil {
 		log.Fatal(err.Error())
 	}

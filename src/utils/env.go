@@ -21,7 +21,7 @@ func ConfigureEnv() {
 	if Env.PORT = os.Getenv("PORT"); Env.PORT == "" {
 		Env.PORT = "8080"
 	}
-	if Env.DB_CONNECTION_STRING = os.Getenv("DB_HOST"); Env.DB_CONNECTION_STRING == "" {
+	if Env.DB_CONNECTION_STRING = os.Getenv("DB_CONNECTION_STRING"); Env.DB_CONNECTION_STRING == "" {
 		Env.DB_CONNECTION_STRING = "host=localhost port=5432 user=postgres password=password dbname=postgres sslmode=disable"
 	}
 	if Env.JWT_SECRET = os.Getenv("JWT_SECRET"); Env.JWT_SECRET == "" {

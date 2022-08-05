@@ -8,9 +8,10 @@ services:
     environment:
       - PORT=8080
       - DB_CONNECTION_STRING=host=postgres port=5432 user=postgres password=password dbname=postgres sslmode=disable
+      # - DB_CONNECTION_STRING=host=kashin.db.elephantsql.com port=5432 user=suehnpel password=ZfCShvfdTCQNaiDEN2G1fUODX1RMhEn0 sslmode=disable // staging string
     networks:
-      database_database:
+      postgres_database:
 
 networks:
-  database_database:
+  postgres_database:
     external: true
