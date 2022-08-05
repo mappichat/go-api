@@ -5,6 +5,7 @@ import "time"
 type Account struct {
 	ID         string `json:"id" db:"id"`
 	UserHandle string `json:"user_handle" db:"user_handle"`
+	Email      string `json:"email" db:"email"`
 }
 
 type Post struct {

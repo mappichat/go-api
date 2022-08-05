@@ -2,6 +2,7 @@ CREATE TABLE IF NOT EXISTS accounts (
   id UUID NOT NULL,
 	email VARCHAR NOT NULL UNIQUE,
   user_handle VARCHAR NOT NULL UNIQUE,
+	constraint check_lowercase_user_handle check (lower(user_handle) = user_handle)
   PRIMARY KEY (id)
 );
 

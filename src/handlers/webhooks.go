@@ -1,7 +1,10 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	jwtware "github.com/gofiber/jwt/v3"
@@ -34,7 +37,34 @@ func HandleWebhooks(webhooks fiber.Router) {
 		}
 
 		accountID := uuid.NewString()
-		userHandle := fmt.Sprintf("@%s", payload.Username)
+		userHandle := fmt.Sprintf("@%s", strings.ToLower(payload.Username))
+
+		handles := []string{}
+		if err := database.Sqldb.Select(
+			&handles,
+			"SELECT user_handle FROM accounts WHERE user_handle LIKE $1",
+			userHandle+"%",
+		); err != nil {
+			return err
+		}
+
+		if len(handles) > 0 {
+			handleSet := map[string]bool{}
+			for _, handle := range handles {
+				handleSet[handle] = true
+			}
+			i := 1
+			for i <= 9999999 {
+				if _, ok := handleSet[userHandle+strconv.Itoa(i)]; !ok {
+					userHandle = userHandle + strconv.Itoa(i)
+					break
+				}
+				i++
+			}
+			if i == 9999999 {
+				return errors.New("too many usernames with prefix " + userHandle)
+			}
+		}
 
 		if _, err := database.Sqldb.Exec(
 			"INSERT INTO accounts (id, email, user_handle) VALUES ($1,$2,$3)",
