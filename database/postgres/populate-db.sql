@@ -1,0 +1,1 @@
+INSERT INTO accounts (id, email, user_handle) VALUES ('3d0eefb9-5578-4b6f-a632-ee2ad06fb1af', 'carlschader@gmail.com', '@carlschader');

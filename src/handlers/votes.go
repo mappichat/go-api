@@ -57,18 +57,21 @@ func HandleVotes(router fiber.Router) {
 			return err
 		}
 
-		post := database.Post{}
+		dest := struct {
+			Latitude  float64 `db:"latitude"`
+			Longitude float64 `db:"longitude"`
+		}{}
 		if err := database.Sqldb.Get(
-			&post,
-			"SELECT latitude, longitude FROM votes WHERE post_id=$1 LIMIT 1",
-			payload.PostID,
+			&dest,
+			"SELECT latitude, longitude FROM posts WHERE id=$1 and account_id=$2",
+			payload.PostID, c.Locals("account_id").(string),
 		); err != nil {
 			return err
 		}
 
 		distance := h3.DistanceBetween(
 			h3.FromGeo(h3.GeoCoord{Latitude: payload.Latitude, Longitude: payload.Longitude}, utils.Env.MAX_RESOLUTION),
-			h3.FromGeo(h3.GeoCoord{Latitude: post.Latitude, Longitude: post.Longitude}, utils.Env.MAX_RESOLUTION),
+			h3.FromGeo(h3.GeoCoord{Latitude: dest.Latitude, Longitude: dest.Longitude}, utils.Env.MAX_RESOLUTION),
 		)
 
 		weight := math.Pow(utils.Env.VOTE_DISTANCE_MULTIPLIER, float64(distance))
@@ -87,7 +90,7 @@ func HandleVotes(router fiber.Router) {
 		}
 
 		if _, err := database.Sqldb.NamedExec(
-			"INSERT INTO votes (post_id, account_id, vote_weight, vote_level, latitude, longitude, time_stamp)",
+			"INSERT INTO votes (post_id, account_id, vote_weight, vote_level, latitude, longitude, time_stamp) VALUES (:post_id,:account_id,:vote_weight,:vote_level,:latitude,:longitude,:time_stamp)",
 			newVote,
 		); err != nil {
 			return err
@@ -103,6 +106,7 @@ func HandleVotes(router fiber.Router) {
 		// This endpoint just reverses the vote weight
 		payload := struct {
 			PostID string `json:"post_id" validate:"required"`
+			Level  int8   `json:"level"`
 		}{}
 
 		if err := c.BodyParser(&payload); err != nil {
@@ -113,8 +117,8 @@ func HandleVotes(router fiber.Router) {
 		}
 
 		if _, err := database.Sqldb.Exec(
-			"UPDATE votes SET vote_weight=-vote_weight WHERE post_id=:$1 AND account_id=:$2",
-			payload.PostID, c.Locals("account_id").(string),
+			"UPDATE votes SET vote_weight=-vote_weight WHERE post_id=$1 AND account_id=$2 AND vote_level=$3",
+			payload.PostID, c.Locals("account_id").(string), payload.Level,
 		); err != nil {
 			return err
 		}
@@ -128,6 +132,7 @@ func HandleVotes(router fiber.Router) {
 
 		payload := struct {
 			PostID string `json:"post_id" validate:"required" db:"post_id"`
+			Level  int8   `json:"level" db:"vote_level"`
 		}{}
 
 		if err := c.BodyParser(&payload); err != nil {
@@ -138,8 +143,8 @@ func HandleVotes(router fiber.Router) {
 		}
 
 		if _, err := database.Sqldb.Exec(
-			"DELETE FROM votes WHERE post_id=$1 AND account_id=$2",
-			payload.PostID, c.Locals("account_id").(string),
+			"DELETE FROM votes WHERE post_id=$1 AND account_id=$2 AND vote_level=$3",
+			payload.PostID, c.Locals("account_id").(string), payload.Level,
 		); err != nil {
 			return err
 		}

@@ -42,12 +42,12 @@ func main() {
 		if !ok {
 			return errors.New("jwt has no account_id claim")
 		}
-		userHandle, ok := claims["user_handle"].(string)
-		if !ok {
-			return errors.New("jwt has no user_handle claim")
-		}
+		// userHandle, ok := claims["user_handle"].(string)
+		// if !ok {
+		// 	return errors.New("jwt has no user_handle claim")
+		// }
 		c.Locals("account_id", accountID)
-		c.Locals("user_handle", userHandle)
+		// c.Locals("user_handle", userHandle)
 		return c.Next()
 	})
 

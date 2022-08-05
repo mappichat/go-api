@@ -15,7 +15,7 @@ func HandleReplies(router fiber.Router) {
 		c.Accepts("application/json")
 
 		payload := struct {
-			ID string `json:"id" validate:"required" db:"id"`
+			PostID string `json:"post_id" validate:"required" db:"post_id"`
 		}{}
 
 		if err := c.BodyParser(&payload); err != nil {
@@ -28,8 +28,8 @@ func HandleReplies(router fiber.Router) {
 		replies := []database.Reply{}
 		database.Sqldb.Select(
 			&replies,
-			"SELECT * FROM replies WHERE id=$1",
-			payload.ID,
+			"SELECT * FROM replies WHERE post_id=$1",
+			payload.PostID,
 		)
 
 		return c.JSON(replies)
@@ -64,7 +64,7 @@ func HandleReplies(router fiber.Router) {
 		}
 
 		if _, err := database.Sqldb.NamedExec(
-			"INSERT INTO replies (id, post_id, account_id, body, latitude, longitude, time_stamp)",
+			"INSERT INTO replies (id, post_id, account_id, body, latitude, longitude, time_stamp) VALUES (:id,:post_id,:account_id,:body,:latitude,:longitude,:time_stamp)",
 			newReply,
 		); err != nil {
 			return err
@@ -97,7 +97,7 @@ func HandleReplies(router fiber.Router) {
 		}
 
 		if _, err := database.Sqldb.NamedExec(
-			fmt.Sprintf("UPDATE replies SET %s WHERE id=%s AND account_id=%s", setStmt, payload.ID, c.Locals("account_id").(string)),
+			fmt.Sprintf("UPDATE replies SET %s WHERE id='%s' AND account_id='%s'", setStmt, payload.ID, c.Locals("account_id").(string)),
 			payload.UpdateBody,
 		); err != nil {
 			return err

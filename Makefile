@@ -35,8 +35,11 @@ kill-scylla:
 compose-postgres:
 	docker-compose -f ${POSTGRES_DIR}/docker-compose.yml up
 
+create-postgres:
+	docker run -it --network ${POSTGRES_NETWORK} --env PGPASSWORD=password -v "${POSTGRES_DIR}:/host-data/" postgres psql -h ${POSTGRES_HOST} -U postgres -f /host-data/create-db.sql
+
 populate-postgres:
-	docker run -it --name postgres-update --network ${POSTGRES_NETWORK} --env PGPASSWORD=password -v "${POSTGRES_DIR}:/host-data/" postgres psql -h ${POSTGRES_HOST} -U postgres -f /host-data/create-db.sql
+	docker run -it --network ${POSTGRES_NETWORK} --env PGPASSWORD=password -v "${POSTGRES_DIR}:/host-data/" postgres psql -h ${POSTGRES_HOST} -U postgres -f /host-data/populate-db.sql
 
 kill-postgres:
 	docker-compose -f ${POSTGRES_DIR}/docker-compose.yml down

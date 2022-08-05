@@ -102,11 +102,11 @@ func HandlePosts(router fiber.Router) {
 			setStmt += "title=:title,"
 		}
 		if payload.UpdateBody.Body != "" {
-			setStmt += "body=:body,"
+			setStmt += "body=:body"
 		}
 
 		if _, err := database.Sqldb.NamedExec(
-			fmt.Sprintf("UPDATE posts SET %s WHERE id=%s AND account_id=%s", setStmt, payload.ID, c.Locals("account_id").(string)),
+			fmt.Sprintf("UPDATE posts SET %s WHERE id='%s' AND account_id='%s'", setStmt, payload.ID, c.Locals("account_id").(string)),
 			payload.UpdateBody,
 		); err != nil {
 			return err
