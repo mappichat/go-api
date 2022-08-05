@@ -44,7 +44,7 @@ func HandleVotes(router fiber.Router) {
 
 		payload := struct {
 			PostID     string  `json:"post_id" validate:"required"`
-			VoteWeight float32 `json: "vote_weight" validate:"required"`
+			VoteWeight float32 `json:"vote_weight" validate:"required"`
 			Level      int8    `json:"level"`
 			Latitude   float64 `json:"latitude" validate:"required"`
 			Longitude  float64 `json:"longitude" validate:"required"`
