@@ -17,7 +17,7 @@ func HandleWebhooks(webhooks fiber.Router) {
 	auth0 := webhooks.Group("/auth0")
 
 	auth0.Use(jwtware.New(jwtware.Config{
-		SigningKey: []byte(utils.Env.AUTH0_EXTENSION_SECRET),
+		SigningKey: []byte(utils.Env.AUTH0_WEBHOOK_SECRET),
 	}))
 
 	auth0.Post("/post-user-registration", func(c *fiber.Ctx) error {
