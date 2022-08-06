@@ -16,10 +16,10 @@ func HandleVotes(router fiber.Router) {
 		c.Accepts("application/json")
 
 		payload := struct {
-			PostID string `json:"post_id" validate:"required"`
+			PostID string `query:"post_id" json:"post_id" validate:"required"`
 		}{}
 
-		if err := c.BodyParser(&payload); err != nil {
+		if err := c.QueryParser(&payload); err != nil {
 			return err
 		}
 		if err := validate.Struct(payload); err != nil {
@@ -131,11 +131,11 @@ func HandleVotes(router fiber.Router) {
 		c.Accepts("application/json")
 
 		payload := struct {
-			PostID string `json:"post_id" validate:"required" db:"post_id"`
-			Level  int8   `json:"level" db:"vote_level"`
+			PostID string `query:"post_id" json:"post_id" validate:"required" db:"post_id"`
+			Level  int8   `query:"level" json:"level" db:"vote_level"`
 		}{}
 
-		if err := c.BodyParser(&payload); err != nil {
+		if err := c.QueryParser(&payload); err != nil {
 			return err
 		}
 		if err := validate.Struct(payload); err != nil {

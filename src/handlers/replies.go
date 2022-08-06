@@ -15,10 +15,10 @@ func HandleReplies(router fiber.Router) {
 		c.Accepts("application/json")
 
 		payload := struct {
-			PostID string `json:"post_id" validate:"required" db:"post_id"`
+			PostID string `query:"post_id" json:"post_id" validate:"required" db:"post_id"`
 		}{}
 
-		if err := c.BodyParser(&payload); err != nil {
+		if err := c.QueryParser(&payload); err != nil {
 			return err
 		}
 		if err := validate.Struct(payload); err != nil {
@@ -111,10 +111,10 @@ func HandleReplies(router fiber.Router) {
 		c.Accepts("application/json")
 
 		payload := struct {
-			ID string `json:"id" validate:"required" db:"id"`
+			ID string `query:"id" json:"id" validate:"required" db:"id"`
 		}{}
 
-		if err := c.BodyParser(&payload); err != nil {
+		if err := c.QueryParser(&payload); err != nil {
 			return err
 		}
 		if err := validate.Struct(payload); err != nil {

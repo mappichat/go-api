@@ -32,10 +32,6 @@ func main() {
 
 	api := app.Group("/api")
 
-	// api.Use(jwtware.New(jwtware.Config{
-	// 	SigningKey: []byte(utils.Env.JWT_SECRET),
-	// }))
-
 	keyRefreshDuration := 5 * time.Minute
 	app.Use(jwtware.New(jwtware.Config{
 		SigningMethod:       "RS256",
@@ -52,12 +48,6 @@ func main() {
 			return errors.New("jwt has no account_id claim")
 		}
 		c.Locals("account_id", accountID)
-
-		// userHandle, ok := claims["user_handle"].(string)
-		// if !ok {
-		// 	return errors.New("jwt has no user_handle claim")
-		// }
-		// c.Locals("user_handle", userHandle)
 		return c.Next()
 	})
 

@@ -14,14 +14,14 @@ func HandlePosts(router fiber.Router) {
 		c.Accepts("json", "text")
 		c.Accepts("application/json")
 		payload := struct {
-			Level        int8    `json:"level"`
-			MinLatitude  float32 `json:"min_latitude" validate:"required"`
-			MaxLatitude  float32 `json:"max_latitude" validate:"required"`
-			MinLongitude float32 `json:"min_longitude" validate:"required"`
-			MaxLongitude float32 `json:"max_longitude" validate:"required"`
+			Level        int8    `query:"level" json:"level"`
+			MinLatitude  float32 `query:"min_latitude" json:"min_latitude" validate:"required"`
+			MaxLatitude  float32 `query:"max_latitude" json:"max_latitude" validate:"required"`
+			MinLongitude float32 `query:"min_longitude" json:"min_longitude" validate:"required"`
+			MaxLongitude float32 `query:"max_longitude" json:"max_longitude" validate:"required"`
 		}{}
 
-		if err := c.BodyParser(&payload); err != nil {
+		if err := c.QueryParser(&payload); err != nil {
 			return err
 		}
 		if err := validate.Struct(payload); err != nil {
@@ -120,10 +120,10 @@ func HandlePosts(router fiber.Router) {
 		c.Accepts("application/json")
 
 		payload := struct {
-			ID string `json:"id" validate:"required" db:"id"`
+			ID string `query:"id" json:"id" validate:"required" db:"id"`
 		}{}
 
-		if err := c.BodyParser(&payload); err != nil {
+		if err := c.QueryParser(&payload); err != nil {
 			return err
 		}
 		if err := validate.Struct(payload); err != nil {
