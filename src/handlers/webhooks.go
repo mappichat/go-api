@@ -83,9 +83,9 @@ func HandleWebhooks(webhooks fiber.Router) {
 				return err
 			}
 
-			return c.JSON(map[string]interface{}{"account_id": accountID, "user_handle": userHandle, "email": payload.Email})
+			return c.JSON(map[string]interface{}{"id": accountID, "user_handle": userHandle, "email": payload.Email})
 		} else {
-			return c.JSON(map[string]interface{}{"account_id": accounts[0].ID, "user_handle": accounts[0].UserHandle, "email": accounts[0].Email})
+			return c.JSON(accounts[0])
 		}
 
 	})
