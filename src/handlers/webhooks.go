@@ -36,16 +36,16 @@ func HandleWebhooks(webhooks fiber.Router) {
 			return err
 		}
 
-		account := database.Account{}
-		if err := database.Sqldb.Get(
-			&account,
+		accounts := []database.Account{}
+		if err := database.Sqldb.Select(
+			&accounts,
 			"SELECT * FROM accounts WHERE email=$1",
 			payload.Email,
 		); err != nil {
 			return err
 		}
 
-		if account.ID != "" {
+		if len(accounts) == 0 {
 			accountID := uuid.NewString()
 			userHandle := fmt.Sprintf("@%s", strings.ToLower(payload.Username))
 
@@ -83,9 +83,9 @@ func HandleWebhooks(webhooks fiber.Router) {
 				return err
 			}
 
-			return c.JSON(map[string]interface{}{"account_id": accountID, "user_handle": userHandle})
+			return c.JSON(map[string]interface{}{"account_id": accountID, "user_handle": userHandle, "email": payload.Email})
 		} else {
-			return c.JSON(map[string]interface{}{"account_id": account.ID, "user_handle": account.UserHandle})
+			return c.JSON(map[string]interface{}{"account_id": accounts[0].ID, "user_handle": accounts[0].UserHandle, "email": accounts[0].Email})
 		}
 
 	})
