@@ -12,6 +12,8 @@ type EnvironmentVariables struct {
 	MAX_RESOLUTION           int
 	VOTE_DISTANCE_MULTIPLIER float64
 	AUTH_WEBHOOK_JWT_SECRET  string
+	AUTH_JWKS_URI            string
+	AUTH_AUDIENCE            string
 }
 
 var Env *EnvironmentVariables = &EnvironmentVariables{}
@@ -35,5 +37,8 @@ func ConfigureEnv() {
 	}
 	if Env.AUTH_WEBHOOK_JWT_SECRET = os.Getenv("AUTH_WEBHOOK_JWT_SECRET"); Env.AUTH_WEBHOOK_JWT_SECRET == "" {
 		Env.AUTH_WEBHOOK_JWT_SECRET = "secret"
+	}
+	if Env.AUTH_JWKS_URI = os.Getenv("AUTH_JWKS_URI"); Env.AUTH_JWKS_URI == "" {
+		Env.AUTH_JWKS_URI = "https://somedomain.com"
 	}
 }
