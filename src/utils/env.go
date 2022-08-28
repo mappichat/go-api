@@ -29,10 +29,10 @@ func ConfigureEnv() {
 	if Env.JWT_SECRET = os.Getenv("JWT_SECRET"); Env.JWT_SECRET == "" {
 		Env.JWT_SECRET = "secret"
 	}
-	if Env.MAX_RESOLUTION, err = strconv.Atoi(os.Getenv("MAX_RESOLUTION")); err != nil {
+	if Env.MAX_RESOLUTION, err = strconv.Atoi(os.Getenv("MAX_RESOLUTION")); err != nil || os.Getenv("MAX_RESOLUTION") == "" {
 		Env.MAX_RESOLUTION = 6
 	}
-	if Env.VOTE_DISTANCE_MULTIPLIER, err = strconv.ParseFloat(os.Getenv("VOTE_DISTANCE_MULTIPLIER"), 64); err != nil {
+	if Env.VOTE_DISTANCE_MULTIPLIER, err = strconv.ParseFloat(os.Getenv("VOTE_DISTANCE_MULTIPLIER"), 64); err != nil || os.Getenv("VOTE_DISTANCE_MULTIPLIER") == "" {
 		Env.VOTE_DISTANCE_MULTIPLIER = 0.5
 	}
 	if Env.AUTH_WEBHOOK_JWT_SECRET = os.Getenv("AUTH_WEBHOOK_JWT_SECRET"); Env.AUTH_WEBHOOK_JWT_SECRET == "" {

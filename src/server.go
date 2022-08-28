@@ -33,7 +33,7 @@ func main() {
 	api := app.Group("/api")
 
 	keyRefreshDuration := 5 * time.Minute
-	app.Use(jwtware.New(jwtware.Config{
+	api.Use(jwtware.New(jwtware.Config{
 		SigningMethod:       "RS256",
 		KeySetURL:           utils.Env.AUTH_JWKS_URI,
 		KeyRefreshInterval:  &keyRefreshDuration,
